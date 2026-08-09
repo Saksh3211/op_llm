@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Train",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/scripts/train.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Inference Agent",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/inference/main.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}

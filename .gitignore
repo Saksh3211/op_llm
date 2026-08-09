@@ -1,0 +1,10 @@
+# data & weights
+training/data/raw/
+training/data/processed/
+training/checkpoints/
+training/logs/
+
+# python
+__pycache__/
+*.pyc
+.venv/

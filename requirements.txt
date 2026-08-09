@@ -1,0 +1,2 @@
+torch>=2.3.0
+# torch-directml   # uncomment on Windows to use the AMD GPU instead of CPU
