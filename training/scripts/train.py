@@ -181,7 +181,7 @@ def main():
     print(f"Loaded {len(dataset)} training examples.")
 
     batch_size = min(8, len(dataset))  # don't ask for a bigger batch than we have data
-    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=False, collate_fn=collate_pad)
+    loader = DataLoader(dataset, batch_size=min(4, batch_size), shuffle=True, drop_last=False, collate_fn=collate_pad)
 
     device = pick_device()
     model = SmallLM(cfg).to(device)

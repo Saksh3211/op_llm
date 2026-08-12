@@ -43,9 +43,9 @@ def pick_device() -> torch.device:
         return torch_directml.device()
     except ImportError as e:
         print(f"DirectML not available ({e}). "
-              f"torch-directml only supports Python 3.8-3.12 - "
-              f"check your interpreter version with 'python --version'. "
-              f"Falling back to CPU.")
+            f"torch-directml only supports Python 3.8-3.12 - "
+            f"check your interpreter version with 'python --version'. "
+            f"Falling back to CPU.")
     except Exception as e:
         print(f"DirectML import failed ({e}). Falling back to CPU.")
     print("Using CPU")
@@ -67,12 +67,12 @@ class InferenceRuntime:
 
         print(f"Loaded checkpoint: {checkpoint_path}")
         print(f"  trained for {ckpt.get('step', '?')} steps, "
-              f"{ckpt.get('tokens_seen', '?')} tokens seen")
+            f"{ckpt.get('tokens_seen', '?')} tokens seen")
         print(f"  device: {self.device}")
 
     @torch.no_grad()
     def generate(self, prompt: str, max_new_tokens: int = 200,
-                 temperature: float = 0.8, top_k: int | None = 40) -> str:
+                temperature: float = 0.8, top_k: int | None = 40) -> str:
         ids = self.tokenizer.encode(prompt)
         if not ids:
             ids = [1]  # avoid empty sequence
@@ -103,7 +103,7 @@ class InferenceRuntime:
 
     @torch.no_grad()
     def generate_stream(self, prompt: str, max_new_tokens: int = 200,
-                         temperature: float = 0.8, top_k: int | None = 40):
+                        temperature: float = 0.8, top_k: int | None = 40):
         """Same generation as generate(), but yields newly decoded text
         piece by piece as each token is produced, instead of returning
         the full string at the end. Byte-level tokenizer means a single

@@ -6,13 +6,13 @@ from dataclasses import dataclass
 @dataclass
 class ModelConfig:
     vocab_size: int = 32000
-    dim: int = 512              # hidden size
-    n_layers: int = 8
-    n_heads: int = 8            # query heads
-    n_kv_heads: int = 4         # GQA: fewer KV heads than query heads
+    dim: int = 192             # hidden size
+    n_layers: int = 6
+    n_heads: int = 6           # query heads
+    n_kv_heads: int = 3      # GQA: fewer KV heads than query heads
     ffn_hidden_mult: float = 8 / 3   # SwiGLU convention (~2.67x dim, rounded to multiple below)
     ffn_multiple_of: int = 32
-    max_seq_len: int = 2048
+    max_seq_len: int = 128
     rope_theta: float = 10000.0
     norm_eps: float = 1e-5
     tie_embeddings: bool = True   # weight tying: input/output embedding share weights
