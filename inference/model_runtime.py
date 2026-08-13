@@ -104,12 +104,9 @@ class InferenceRuntime:
     @torch.no_grad()
     def generate_stream(self, prompt: str, max_new_tokens: int = 200,
                         temperature: float = 0.8, top_k: int | None = 40):
-        """Same generation as generate(), but yields newly decoded text
-        piece by piece as each token is produced, instead of returning
-        the full string at the end. Byte-level tokenizer means a single
-        token doesn't always decode to a full character on its own (multi-
-        byte UTF-8), so we decode incrementally and only yield the new
-        suffix once it's valid text."""
+        """Same as generate(), but yields (new_text_piece, token_id) tuples
+        as each token is produced so callers can show streaming token-level
+        output (and token ids) as the model generates."""
         ids = self.tokenizer.encode(prompt)
         if not ids:
             ids = [1]
@@ -135,11 +132,14 @@ class InferenceRuntime:
             next_token = torch.multinomial(probs, num_samples=1)
             tokens = torch.cat([tokens, next_token], dim=1)
 
+            # token id as python int
+            token_id = int(next_token[0, 0].item())
+
             full_text = self.tokenizer.decode(tokens[0].tolist())
             if len(full_text) > len(prev_text):
                 new_piece = full_text[len(prev_text):]
                 prev_text = full_text
-                yield new_piece
+                yield new_piece, token_id
 
 
 def find_latest_checkpoint(checkpoints_dir: Path) -> Path:

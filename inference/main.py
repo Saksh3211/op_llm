@@ -24,6 +24,8 @@ sys.path.insert(0, str(ROOT))
 
 from inference.model_runtime import InferenceRuntime, find_latest_checkpoint
 from inference.temperature import TemperatureController
+from inference.agent import create_agent_from_runtime
+import re
 
 
 def handle_temp_command(arg: str, controller: TemperatureController):
@@ -68,11 +70,49 @@ def main():
             handle_temp_command(prompt[len("/temp"):], temp_controller)
             continue
 
-        temperature, source = temp_controller.get(prompt)
+        # if user wants the model-with-tools agent behavior, use Agent
+        agent = create_agent_from_runtime(runtime)
+
+        # detect optional /think prefix
+        m = re.match(r"^/think(?:\s+([0-1](?:\.\d+)?))?(?:\s+(.*))?$", prompt.strip())
+        if m:
+            think_val = float(m.group(1)) if m.group(1) else None
+            user_prompt = m.group(2) or input("Prompt: ")
+        else:
+            think_val = None
+            user_prompt = prompt
+
+        temperature, source = temp_controller.get(user_prompt)
         print(f"[temperature={temperature} ({source})]")
 
-        for piece in runtime.generate_stream(prompt, max_new_tokens=200, temperature=temperature, top_k=40):
-            print(piece, end="", flush=True)
+        # stream plan + token-by-token answer with token ids and colors
+        plan, observations, gen = agent.answer_stream(user_prompt, think=think_val, max_new_tokens=200, temperature=temperature)
+
+        def _c(text: str, code: int) -> str:
+            return f"\x1b[{code}m{text}\x1b[0m"
+
+        print("\n" + _c("--- Plan ---", 36))
+        print(plan)
+        if observations:
+            print("\n" + _c("--- Observations ---", 33))
+            for n, a, o in observations:
+                print(f"[{n}] {a} -> {o}")
+
+        print("\n" + _c("--- Answer (streaming) ---", 32))
+        try:
+            token_count = 0
+            for piece, token_id in gen:
+                token_count += 1
+                # skip mostly whitespace/empty pieces (often noise tokens)
+                if piece and piece.strip():
+                    # show generated text in green
+                    print(_c(piece, 32), end="", flush=True)
+                    # show token id in dim gray
+                    print(f"\x1b[2m[{token_id}]\x1b[0m", end="", flush=True)
+            if token_count == 0 or all(not s.strip() for _, _ in gen):
+                print("<no meaningful output>")
+        except Exception as e:
+            print(f"\n<stream-error: {e}>")
         print("\n")
 
 
