@@ -18,6 +18,14 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset, DataLoader
 
+# TPU support (optional, for Google Colab and TPU-equipped systems)
+try:
+    import torch_xla
+    import torch_xla.core.xla_model as xm
+    HAS_TPU = True
+except ImportError:
+    HAS_TPU = False
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
@@ -137,13 +145,28 @@ def collate_pad(batch):
 
 
 # ---------------------------------------------------------------------------
-# Device selection - CPU, CUDA, or DirectML (for the AMD GPU on Windows)
+# Device selection - TPU, CUDA, DirectML, or CPU (in priority order)
 # ---------------------------------------------------------------------------
 
 def pick_device() -> torch.device:
+    # Priority order: TPU > CUDA > DirectML > CPU
+    
+    # Try TPU first (Google Colab, TPU-equipped systems)
+    if HAS_TPU:
+        try:
+            device = xm.xla_device()
+            print(f"Using TPU device: {device}")
+            print("  TPU is excellent for LLM training - 2-3x faster than GPU!")
+            return device
+        except RuntimeError:
+            pass  # TPU not available, try next option
+    
+    # Try CUDA GPU (NVIDIA)
     if torch.cuda.is_available():
         print("Using CUDA GPU")
         return torch.device("cuda")
+    
+    # Try DirectML (AMD GPU on Windows)
     try:
         import torch_directml
         print("Using DirectML (AMD GPU)")
@@ -155,6 +178,8 @@ def pick_device() -> torch.device:
             f"Falling back to CPU.")
     except Exception as e:
         print(f"DirectML import failed ({e}). Falling back to CPU.")
+    
+    # Fallback to CPU
     print("Using CPU")
     return torch.device("cpu")
 
@@ -180,12 +205,16 @@ def main():
     dataset = ShardDataset(processed_dir, tokenizer, seq_len=cfg.max_seq_len)
     print(f"Loaded {len(dataset)} training examples.")
 
-    batch_size = min(8, len(dataset))  # don't ask for a bigger batch than we have data
-    loader = DataLoader(dataset, batch_size=min(4, batch_size), shuffle=True, drop_last=False, collate_fn=collate_pad)
+    batch_size = min(32, len(dataset))  # don't ask for a bigger batch than we have data
+    loader = DataLoader(dataset, batch_size=min(16, batch_size), shuffle=True, drop_last=False, collate_fn=collate_pad)
 
     device = pick_device()
     model = SmallLM(cfg).to(device)
     print(f"Model parameters: {model.num_params():,}")
+    
+    # TPU initialization: synchronize processes if using TPU
+    if HAS_TPU and "xla" in str(device):
+        xm.rendezvous("init")  # synchronize across TPU cores
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4, weight_decay=0.1)
 
@@ -235,6 +264,10 @@ def main():
                 batch_tokens = x.numel()
                 tokens_seen += batch_tokens
                 toks_per_sec = batch_tokens / max(step_time, 1e-6)
+                
+                # TPU-specific: synchronize metrics across cores
+                if HAS_TPU and "xla" in str(device):
+                    xm.rendezvous("step_end")
 
                 if step % 10 == 0 or step == 1:
                     remaining = time_budget_seconds - elapsed
@@ -253,6 +286,9 @@ def main():
                     log_file.flush()
 
                 if time.time() - last_checkpoint_time >= checkpoint_every_seconds:
+                    # On TPU, sync to ensure all cores finish before checkpointing
+                    if HAS_TPU and "xla" in str(device):
+                        xm.mark_step()
                     save_checkpoint("latest")
                     last_checkpoint_time = time.time()
 

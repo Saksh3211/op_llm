@@ -165,7 +165,7 @@ class Agent:
 			print("\n--- Answer ---\n" + answer + "\n")
 
 
-def create_agent_from_runtime(runtime: InferenceRuntime) -> Agent:
+def create_agent_from_runtime(runtime:InferenceRuntime) -> Agent:
 	return Agent(runtime)
 
 
