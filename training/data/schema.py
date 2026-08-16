@@ -21,8 +21,8 @@ class Record:
         return Record(**json.loads(line))
 
 
-CONTROL_TOKENS = ["[PLAN]", "[CODE]", "[CHECK]", "[ANSWER]"]
+CONTROL_TOKENS = ["[PLAN]", "[CODE]", "[CHECK]", "[ANSWER]", "[QUESTION]"]
 CATEGORIES = [
     "english", "programming", "debugging", "algorithms",
-    "math", "reasoning", "docs", "tool_use",
+    "math", "reasoning", "docs", "tool_use", "qa", "arxiv",
 ]
